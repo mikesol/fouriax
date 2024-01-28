@@ -13,3 +13,11 @@ def esr_loss(input, target, eps=1e-8):
     losses = num / denom
     losses = jnp.mean(losses)
     return losses
+
+
+def dc_loss(input, target, eps=1e-8):
+    num = jnp.mean(target - input, axis=1) ** 2
+    denom = jnp.mean(target**2, axis=1) + eps
+    losses = num / denom
+    losses = jnp.mean(losses)
+    return losses

@@ -57,6 +57,11 @@ Additionally, we include perceptual transforms.
         <td><a href=https://arxiv.org/abs/1911.08922>Wright & Välimäki, 2019</a></td>
     </tr>
     <tr>
+        <td>DC error (DC)</td>
+        <td><code>auraloss.time.DCLoss()</code></td>
+        <td><a href=https://arxiv.org/abs/1911.08922>Wright & Välimäki, 2019</a></td>
+    </tr>
+    <tr>
         <td>Log hyperbolic cosine (Log-cosh)</td>
         <td><code>fouriax.time.log_cosh_loss()</code></td>
         <td><a href=https://openreview.net/forum?id=rkglvsC9Ym>Chen et al., 2019</a></td>

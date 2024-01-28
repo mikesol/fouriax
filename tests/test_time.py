@@ -51,3 +51,16 @@ def test_esr_loss(input, target):
         ),
         atol=1e-3,
     )
+
+@settings(deadline=None)
+@given(audio_strategy, audio_strategy)
+def test_dc_loss(input, target):
+    """Sample pytest test function with the pytest fixture as an argument."""
+    assert np.allclose(
+        jax.jit(dc_loss)(input, target, eps=1e-5),
+        DCLoss(eps=1e-5)(
+            torch.from_numpy(np.transpose(input, (0, 2, 1))),
+            torch.from_numpy(np.transpose(target, (0, 2, 1))),
+        ),
+        atol=1e-3,
+    )
