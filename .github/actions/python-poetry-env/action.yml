@@ -19,5 +19,3 @@ runs:
     - name: Create virtual environment
       run: poetry install
       shell: bash
-    - name: Run tests
-      run: pytest
