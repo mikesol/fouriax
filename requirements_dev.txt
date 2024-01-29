@@ -10,3 +10,6 @@ twine==1.14.0
 
 pytest==6.2.4
 black==21.7b0
+hypothesis==6.97.1
+audioread==3.0.1
+torch==2.1.2
