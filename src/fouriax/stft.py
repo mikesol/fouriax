@@ -1,5 +1,5 @@
-import jax.numpy as jnp
 import jax.lax as lax
+import jax.numpy as jnp
 import librosa
 
 
@@ -18,23 +18,23 @@ def init_dft_params(n, norm=None):
     def dft_matrix(n):
         x, y = jnp.meshgrid(jnp.arange(n), jnp.arange(n))
         omega = jnp.exp(-2 * jnp.pi * 1j / n)
-        W = omega ** (x * y)
-        return W
+        w = omega ** (x * y)
+        return w
 
     def idft_matrix(n):
         x, y = jnp.meshgrid(jnp.arange(n), jnp.arange(n))
         omega = jnp.exp(2 * jnp.pi * 1j / n)
-        W = omega ** (x * y)
-        return W
+        w = omega ** (x * y)
+        return w
 
-    W = dft_matrix(n)
-    inv_W = idft_matrix(n)
+    w = dft_matrix(n)
+    inv_w = idft_matrix(n)
 
     return {
-        "W_real": jnp.real(W),
-        "W_imag": jnp.imag(W),
-        "inv_W_real": jnp.real(inv_W),
-        "inv_W_imag": jnp.imag(inv_W),
+        "W_real": jnp.real(w),
+        "W_imag": jnp.imag(w),
+        "inv_W_real": jnp.real(inv_w),
+        "inv_W_imag": jnp.imag(inv_w),
         "n": n,
         "norm": norm,
     }
@@ -180,16 +180,16 @@ def init_stft_params(n_fft, hop_length=None, win_length=None, window_type="hann"
     def dft_matrix(n):
         x, y = jnp.meshgrid(jnp.arange(n), jnp.arange(n))
         omega = jnp.exp(-2 * jnp.pi * 1j / n)
-        W = omega ** (x * y)
-        return W
+        w = omega ** (x * y)
+        return w
 
-    W = dft_matrix(
+    w = dft_matrix(
         n_fft
     )  # Reuse the dft_matrix function from the previous implementation
 
     # Prepare convolutional filters
-    real_filter = jnp.real(W[:, : n_fft // 2 + 1] * fft_window[:, None]).T
-    imag_filter = jnp.imag(W[:, : n_fft // 2 + 1] * fft_window[:, None]).T
+    real_filter = jnp.real(w[:, : n_fft // 2 + 1] * fft_window[:, None]).T
+    imag_filter = jnp.imag(w[:, : n_fft // 2 + 1] * fft_window[:, None]).T
 
     params = {
         "real_filter": real_filter[None, :],

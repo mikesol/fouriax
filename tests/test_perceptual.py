@@ -1,10 +1,11 @@
-from fouriax.perceptual import *
-from auraloss.perceptual import *
 import numpy as np
 import torch
-import numpy as np
-from hypothesis import given, settings, strategies as st
-from hypothesis.extra.numpy import arrays, from_dtype
+from auraloss.perceptual import FIRFilter
+from hypothesis import given, settings
+from hypothesis import strategies as st
+from hypothesis.extra.numpy import arrays
+
+from fouriax.perceptual import create_fir_filter, fir_filter
 
 audio_strategy = arrays(
     np.float32,
@@ -12,7 +13,7 @@ audio_strategy = arrays(
         st.integers(min_value=1, max_value=64),
         st.integers(min_value=16, max_value=20247),
     ),
-    elements=dict(min_value=-1.0, max_value=1.0),
+    elements={"min_value": -1.0, "max_value": 1.0},
 )
 
 

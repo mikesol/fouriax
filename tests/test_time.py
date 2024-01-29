@@ -2,14 +2,15 @@
 
 """Tests for `fouriax` package."""
 
-import numpy as np
-from hypothesis import given, settings, strategies as st
-from hypothesis.extra.numpy import arrays, from_dtype
-import torch
 import jax
+import numpy as np
+import torch
+from auraloss.time import DCLoss, ESRLoss, LogCoshLoss
+from hypothesis import given, settings
+from hypothesis import strategies as st
+from hypothesis.extra.numpy import arrays
 
-from fouriax.time import *
-from auraloss.time import *
+from fouriax.time import dc_loss, esr_loss, log_cosh_loss
 
 shared_shape = st.shared(
     st.tuples(
@@ -21,18 +22,20 @@ shared_shape = st.shared(
 )
 
 audio_strategy = arrays(
-    np.float32, shared_shape, elements=dict(min_value=-1.0, max_value=1.0)
+    np.float32,
+    shared_shape,
+    elements={"min_value": -1.0, "max_value": 1.0},
 )
 
 
 @settings(deadline=None)
 @given(audio_strategy, audio_strategy)
-def test_log_cosh_loss(input, target):
+def test_log_cosh_loss(inputs, target):
     """Sample pytest test function with the pytest fixture as an argument."""
     assert np.allclose(
-        jax.jit(log_cosh_loss)(input, target, eps=1e-5),
+        jax.jit(log_cosh_loss)(inputs, target, eps=1e-5),
         LogCoshLoss(eps=1e-5)(
-            torch.from_numpy(np.transpose(input, (0, 2, 1))),
+            torch.from_numpy(np.transpose(inputs, (0, 2, 1))),
             torch.from_numpy(np.transpose(target, (0, 2, 1))),
         ),
         atol=1e-3,
@@ -41,25 +44,26 @@ def test_log_cosh_loss(input, target):
 
 @settings(deadline=None)
 @given(audio_strategy, audio_strategy)
-def test_esr_loss(input, target):
+def test_esr_loss(inputs, target):
     """Sample pytest test function with the pytest fixture as an argument."""
     assert np.allclose(
-        jax.jit(esr_loss)(input, target, eps=1e-5),
+        jax.jit(esr_loss)(inputs, target, eps=1e-5),
         ESRLoss(eps=1e-5)(
-            torch.from_numpy(np.transpose(input, (0, 2, 1))),
+            torch.from_numpy(np.transpose(inputs, (0, 2, 1))),
             torch.from_numpy(np.transpose(target, (0, 2, 1))),
         ),
         atol=1e-3,
     )
 
+
 @settings(deadline=None)
 @given(audio_strategy, audio_strategy)
-def test_dc_loss(input, target):
+def test_dc_loss(inputs, target):
     """Sample pytest test function with the pytest fixture as an argument."""
     assert np.allclose(
-        jax.jit(dc_loss)(input, target, eps=1e-5),
+        jax.jit(dc_loss)(inputs, target, eps=1e-5),
         DCLoss(eps=1e-5)(
-            torch.from_numpy(np.transpose(input, (0, 2, 1))),
+            torch.from_numpy(np.transpose(inputs, (0, 2, 1))),
             torch.from_numpy(np.transpose(target, (0, 2, 1))),
         ),
         atol=1e-3,

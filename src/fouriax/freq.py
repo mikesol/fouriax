@@ -1,8 +1,10 @@
-import jax.numpy as jnp
-from . import stft
-import optax
-import jax
 from functools import partial
+
+import jax
+import jax.numpy as jnp
+import optax
+
+from . import stft
 
 
 def spectral_convergence_loss(x_mag, y_mag):
@@ -61,7 +63,7 @@ def stft_magnitude_loss(x_mag, y_mag, log=True, distance="L1", reduction="mean")
 
 def stft_loss(
     params,
-    input,
+    inputs,
     target,
     w_sc=1.0,
     w_log_mag=1.0,
@@ -77,56 +79,59 @@ def stft_loss(
     """
     Calculate the STFT loss.
     """
-    bs, _, chs = input.shape
+    bs, _, chs = inputs.shape
 
-    # Compute STFT for input and target
+    # Compute STFT for inputs and target
     def _to_map(x):
         o = stft.stft(params, x)
         return o
 
     to_map = jax.vmap(_to_map, in_axes=-1, out_axes=-1)
-    mf = lambda x, y: (
-        jnp.sqrt(jnp.clip((x**2) + (y**2), a_min=eps)),
-        jax.lax.atan2(y, x),
-    )
-    input_mag, input_phs = mf(*to_map(input))
+
+    def mf(x, y):
+        return (
+            jnp.sqrt(jnp.clip((x**2) + (y**2), a_min=eps)),
+            jax.lax.atan2(y, x),
+        )
+
+    inputs_mag, inputs_phs = mf(*to_map(inputs))
     target_mag, target_phs = mf(*to_map(target))
 
     # Apply scaling (e.g., Mel, Chroma) if required
     if scale is not None:
-        input_mag = jnp.matmul(scale, input_mag)
+        inputs_mag = jnp.matmul(scale, inputs_mag)
         target_mag = jnp.matmul(scale, target_mag)
 
     # Apply perceptual weighting if required
     if perceptual_weighting is not None:
         # since FIRFilter only support mono audio we will move channels to batch dim
-        input = jnp.transpose(input, (0, 2, 1))
+        inputs = jnp.transpose(inputs, (0, 2, 1))
         target = jnp.transpose(target, (0, 2, 1))
-        input = jnp.reshape(input, (bs * chs, -1))
+        inputs = jnp.reshape(inputs, (bs * chs, -1))
         target = jnp.reshape(target, (bs * chs, -1))
 
         # now apply the filter to both
-        input, target = perceptual_weighting(input), perceptual_weighting(target)
+        inputs, target = perceptual_weighting(inputs), perceptual_weighting(target)
 
         # now move the channels back
-        input = jnp.reshape(input, (bs, chs, -1))
+        inputs = jnp.reshape(inputs, (bs, chs, -1))
         target = jnp.reshape(target, (bs, chs, -1))
-        input = jnp.transpose(input, (0, 2, 1))
+        inputs = jnp.transpose(inputs, (0, 2, 1))
         target = jnp.transpose(target, (0, 2, 1))
 
     # Calculate loss components
-    input_mag, input_phs, target_mag, target_phs = (
-        jnp.ravel(input_mag),
-        jnp.ravel(input_phs),
+    inputs_mag, inputs_phs, target_mag, target_phs = (
+        jnp.ravel(inputs_mag),
+        jnp.ravel(inputs_phs),
         jnp.ravel(target_mag),
         jnp.ravel(target_phs),
     )
     sc_mag_loss = (
-        spectral_convergence_loss(input_mag, target_mag) * w_sc if w_sc else 0.0
+        spectral_convergence_loss(inputs_mag, target_mag) * w_sc if w_sc else 0.0
     )
     log_mag_loss = (
         stft_magnitude_loss(
-            input_mag, target_mag, log=True, reduction=reduction, distance=mag_distance
+            inputs_mag, target_mag, log=True, reduction=reduction, distance=mag_distance
         )
         * w_log_mag
         if w_log_mag
@@ -134,14 +139,18 @@ def stft_loss(
     )
     lin_mag_loss = (
         stft_magnitude_loss(
-            input_mag, target_mag, log=False, reduction=reduction, distance=mag_distance
+            inputs_mag,
+            target_mag,
+            log=False,
+            reduction=reduction,
+            distance=mag_distance,
         )
         * w_lin_mag
         if w_lin_mag
         else 0.0
     )
     phs_loss = (
-        optax.squared_error(input_phs, target_phs).mean() * w_phs if w_phs else 0.0
+        optax.squared_error(inputs_phs, target_phs).mean() * w_phs if w_phs else 0.0
     )
 
     # Combine loss components
@@ -162,7 +171,7 @@ def stft_loss(
 
 def multi_resolution_stft_loss(
     params,
-    input,
+    inputs,
     target,
     w_sc=1.0,
     w_log_mag=1.0,
@@ -179,7 +188,7 @@ def multi_resolution_stft_loss(
     sc_mag_loss, log_mag_loss, lin_mag_loss, phs_loss = [], [], [], []
     loss_fn = partial(
         stft_loss,
-        input=input,
+        inputs=inputs,
         target=target,
         w_sc=w_sc,
         w_log_mag=w_log_mag,

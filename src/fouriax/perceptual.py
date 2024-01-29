@@ -1,6 +1,6 @@
 import jax.numpy as jnp
-from jax import lax
 import scipy.signal
+from jax import lax
 
 
 def create_fir_filter(filter_type, coef, fs, ntaps):
@@ -13,8 +13,8 @@ def create_fir_filter(filter_type, coef, fs, ntaps):
         taps = jnp.array([1, 0, -coef])
     elif filter_type == "aw":
         f1, f2, f3, f4 = 20.598997, 107.65265, 737.86223, 12194.217
-        A1000 = 1.9997
-        nums = [(2 * jnp.pi * f4) ** 2 * (10 ** (A1000 / 20)), 0, 0, 0, 0]
+        a1000 = 1.9997
+        nums = [(2 * jnp.pi * f4) ** 2 * (10 ** (a1000 / 20)), 0, 0, 0, 0]
         dens = jnp.polymul(
             jnp.array([1, 4 * jnp.pi * f4, (2 * jnp.pi * f4) ** 2]),
             jnp.array([1, 4 * jnp.pi * f1, (2 * jnp.pi * f1) ** 2]),

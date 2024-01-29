@@ -3,13 +3,14 @@
 """Tests for `fouriax` package."""
 
 import numpy as np
-from hypothesis import given, settings, strategies as st
-from hypothesis.extra.numpy import arrays, from_dtype
 import torch
-import fouriax.stft as stft
+from auraloss.freq import MultiResolutionSTFTLoss, STFTLoss
+from hypothesis import given, settings
+from hypothesis import strategies as st
+from hypothesis.extra.numpy import arrays
 
-from fouriax.freq import *
-from auraloss.freq import *
+import fouriax.stft as stft
+from fouriax.freq import multi_resolution_stft_loss, stft_loss
 
 shared_shape = st.shared(
     st.tuples(
@@ -21,7 +22,9 @@ shared_shape = st.shared(
 )
 
 audio_strategy = arrays(
-    np.float32, shared_shape, elements=dict(min_value=-1.0, max_value=1.0)
+    np.float32,
+    shared_shape,
+    elements={"min_value": -1.0, "max_value": 1.0},
 )
 
 
@@ -31,12 +34,12 @@ audio_strategy = arrays(
     audio_strategy,
     st.integers(min_value=6, max_value=8).map(lambda x: 2**x),
 )
-def test_stft_loss(input, target, res):
+def test_stft_loss(inputs, target, res):
     """Sample pytest test function with the pytest fixture as an argument."""
     params = stft.init_stft_params(res, res // 4, res // 2)
-    loss = stft_loss(params, input, target)
+    loss = stft_loss(params, inputs, target)
     loss_ref = STFTLoss(res, res // 4, res // 2)(
-        torch.from_numpy(np.transpose(input, (0, 2, 1))),
+        torch.from_numpy(np.transpose(inputs, (0, 2, 1))),
         torch.from_numpy(np.transpose(target, (0, 2, 1))),
     )
     assert np.allclose(loss, loss_ref)
@@ -47,7 +50,7 @@ def test_stft_loss(input, target, res):
     audio_strategy,
     audio_strategy,
 )
-def test_multi_resolution_stft_loss(input, target):
+def test_multi_resolution_stft_loss(inputs, target):
     """Sample pytest test function with the pytest fixture as an argument."""
     fft_sizes = [1024, 2048, 512]
     hop_sizes = [120, 240, 50]
@@ -56,11 +59,11 @@ def test_multi_resolution_stft_loss(input, target):
         stft.init_stft_params(x, y, z)
         for x, y, z in zip(fft_sizes, hop_sizes, win_lengths)
     ]
-    loss = multi_resolution_stft_loss(params, input, target)
+    loss = multi_resolution_stft_loss(params, inputs, target)
     loss_ref = MultiResolutionSTFTLoss(
         fft_sizes=fft_sizes, hop_sizes=hop_sizes, win_lengths=win_lengths
     )(
-        torch.from_numpy(np.transpose(input, (0, 2, 1))),
+        torch.from_numpy(np.transpose(inputs, (0, 2, 1))),
         torch.from_numpy(np.transpose(target, (0, 2, 1))),
     )
     assert np.allclose(loss, loss_ref)
