@@ -38,6 +38,7 @@ jobs:
           add: 'CHANGELOG.md pyproject.toml'
           message: 'Release ${{ steps.updated_version.outputs.version }}'
       - name: Create tag
+        shell: bash
         run: |
           git tag ${{ steps.updated_version.outputs.version }}
           git push origin ${{ steps.updated_version.outputs.version }}
