@@ -10,7 +10,7 @@ with open("README.md") as readme_file:
 with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
-requirements = ["jax>=0.4.23", "jaxlib>=0.4.23", "optax>=0.1.8", "librosa>=0.10.1", "numpy>=1.26.3", "scipy>=1.12.0"]
+requirements = ["jax>=0.4.13", "jaxlib>=0.4.13", "optax>=0.1.7", "librosa>=0.10.1", "numpy>=1.24.4", "scipy>=1.10.1"]
 
 test_requirements = [
     "pytest>=3",
