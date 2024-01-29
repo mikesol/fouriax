@@ -40,7 +40,7 @@ librosa = "*"
 
 [tool.poetry.dev-dependencies]
 auraloss = "*"
-pytorch = "*"
+torch = "*"
 hypothesis = "*"
 autoflake = "*"
 black = "*"

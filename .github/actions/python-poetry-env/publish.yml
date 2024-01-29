@@ -1,5 +1,10 @@
-name: 'Setup Python + Poetry environment'
-description: 'Setup Python + Poetry environment'
+name: 'Setup Python + Poetry environment, Test, Publish'
+description: 'Setup Python + Poetry environment, Test, Publish'
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
 
 inputs:
   python-version:
@@ -21,3 +26,9 @@ runs:
       shell: bash
     - name: Run tests
       run: pytest
+    - name: Publish to PyPI
+      if: success()
+      uses: pypa/gh-action-pypi-publish@v1.4.2
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
