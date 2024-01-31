@@ -1,0 +1,18 @@
+{
+  "template": "https://github.com/woltapp/wolt-python-package-cookiecutter",
+  "commit": "4eecc9c4d27e3c9321438bc1fdaf717bec5eadf6",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "author_name": "fouriax",
+      "author_email": "mike12098@gmail.com",
+      "github_username": "fouriax",
+      "project_name": "fouraix",
+      "project_slug": "fouraix",
+      "package_name": "fouraix",
+      "project_short_description": "Audio loss functions for jax",
+      "_template": "https://github.com/woltapp/wolt-python-package-cookiecutter"
+    }
+  },
+  "directory": null
+}
