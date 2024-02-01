@@ -8,6 +8,7 @@ from auraloss.freq import MultiResolutionSTFTLoss, STFTLoss
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
+from scipy.signal import butter, filtfilt
 
 import fouriax.stft as stft
 from fouriax.freq import multi_resolution_stft_loss, stft_loss
@@ -21,11 +22,69 @@ shared_shape = st.shared(
     key="array_shape",
 )
 
+
+def filter_signal(signal):
+    signal = np.array(signal)
+    fs = 44100  # Sampling Frequency
+
+    # Design Filters
+    def butter_highpass(cutoff, fs, order=5):
+        nyq = 0.5 * fs
+        normal_cutoff = cutoff / nyq
+        b, a = butter(order, normal_cutoff, btype="high", analog=False)
+        return b, a
+
+    def butter_lowpass(cutoff, fs, order=5):
+        nyq = 0.5 * fs
+        normal_cutoff = cutoff / nyq
+        b, a = butter(order, normal_cutoff, btype="low", analog=False)
+        return b, a
+
+    def butter_bandpass(lowcut, highcut, fs, order=5):
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        b, a = butter(order, [low, high], btype="band")
+        return b, a
+
+    # Apply Filters
+    hp_cutoff = 1000  # High pass cutoff frequency
+    lp_cutoff = 500  # Low pass cutoff frequency
+    bp_low, bp_high = 200, 1500  # Bandpass frequencies
+
+    b, a = butter_highpass(hp_cutoff, fs)
+    high_passed = filtfilt(b, a, signal)
+
+    b, a = butter_lowpass(lp_cutoff, fs)
+    low_passed = filtfilt(b, a, signal)
+
+    b, a = butter_bandpass(bp_low, bp_high, fs)
+    band_passed = filtfilt(b, a, signal)
+
+    # Mix Outputs
+    mixed_output = high_passed + low_passed + band_passed
+    return mixed_output
+
+
+def process_batch(batch_signal):
+    # Assuming batch_signal is of shape (batch, seq, chan)
+    processed_signal = np.zeros_like(batch_signal)
+    for i in range(batch_signal.shape[0]):  # Iterate over batch
+        for j in range(batch_signal.shape[2]):  # Iterate over chan
+            processed_signal[i, :, j] = filter_signal(batch_signal[i, :, j])
+    return processed_signal
+
+
+# we do some filtering on the hypothesis generated signals
+# hypothesis has a tendency of generating stuff like all 1s, which
+# leads to logs of values close to 0, which leads to numerical instability
+# as no audio is actually like this, we apply filters to the generated signals
+# to make them slightly more audio-y
 audio_strategy = arrays(
     np.float32,
     shared_shape,
     elements={"min_value": -1.0, "max_value": 1.0},
-)
+).map(process_batch)
 
 
 @settings(deadline=None, max_examples=10)
