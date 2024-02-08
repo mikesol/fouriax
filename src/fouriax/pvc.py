@@ -23,11 +23,10 @@ def precompute_bitreverse_indices(n):
 def precompute_cfkt_constants(n):
     c = [jnp.array([1])]
     while len(c) < n:
-        cc = c + c
-        t = []
-        for i, y in enumerate(cc):
-            t.append(jnp.concatenate([y, y * jnp.exp(1j * jnp.pi * i / len(c))]))
-        c = t
+        c = [
+            jnp.concatenate([y, y * jnp.exp(1j * jnp.pi * i / len(c))])
+            for i, y in enumerate(c + c)
+        ]
     c = jnp.array(c)
     return c
 
