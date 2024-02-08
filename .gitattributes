@@ -1,0 +1,6 @@
+audio/input_1.wav filter=lfs diff=lfs merge=lfs -text
+audio/input_2.wav filter=lfs diff=lfs merge=lfs -text
+audio/target_1.wav filter=lfs diff=lfs merge=lfs -text
+audio/target_2.wav filter=lfs diff=lfs merge=lfs -text
+logs/input_1.log filter=lfs diff=lfs merge=lfs -text
+logs/input_2.log filter=lfs diff=lfs merge=lfs -text
