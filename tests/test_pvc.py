@@ -1,6 +1,7 @@
 import random
 from functools import partial
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 import soundfile as sf
@@ -11,6 +12,7 @@ from fouriax.pvc import (
     koonce_normalization,
     koonce_sinc,
     make_pvc_patches,
+    noscbank,
     precompute_bitreverse_indices,
     precompute_cfkt_constants,
     precompute_rfkt_constants,
@@ -178,3 +180,113 @@ def test_twiddle():
         o.append(w)
         w *= wp
     assert np.allclose(o, ws)
+
+
+def test_nosc():
+    # Parameters
+    fft_len = 512
+    sample_rate = 44100
+    nw = 1024
+    hop_length = 147
+
+    # Initialize C with alternating amplitude and frequency values
+    chans = np.zeros(2 * fft_len + 2)  # +2 to include both endpoints
+    frequencies = np.linspace(
+        0, 22050, fft_len + 1
+    )  # Frequencies evenly spaced up to 22050 Hz
+
+    # Find the index closest to 10 kHz frequency
+    target_freq = 10000
+    closest_idx = np.abs(frequencies - target_freq).argmin()
+
+    # Set all amplitudes to 0 initially
+    amplitudes = np.zeros(fft_len + 1)
+
+    # Set the amplitude at the closest index to 10 kHz to 0.1
+    amplitudes[closest_idx] = 1e-5
+
+    chans[0::2] = amplitudes  # Assign amplitudes to even indices
+    chans[1::2] = frequencies  # Assign frequencies to odd indices
+
+    # State dictionary for noscbank function
+    2 * np.pi
+    p_inc = 1.0 / sample_rate
+    i_inv = 1.0 / hop_length
+    lastval = np.zeros((fft_len + 1, 2))
+    index = np.zeros(fft_len + 1)
+
+    jnoscbank = jax.jit(noscbank)
+    synth = jnoscbank(
+        (lastval, index),
+        jnp.tile(chans[None, :], (2 << 8, 1)),
+        nw,
+        p_inc,
+        i_inv,
+        jnp.arange(hop_length),
+    )
+
+    synth = jnp.reshape(synth[1], (-1,))
+
+    #
+    # Generate a reference 10 kHz sine wave
+    t = np.arange(len(synth)) / sample_rate  # Time array
+    ref_wave = 0.011 * np.sin(2 * np.pi * 10000 * t)  # 0.1 amplitude to match
+    synth = synth[-nw:]
+    ref_wave = ref_wave[-nw:]
+    assert len(synth) == len(ref_wave)
+
+    # Compute the Fourier Transform of both signals
+    fft_output = np.fft.fft(synth)
+    fft_ref = np.fft.fft(ref_wave)
+
+    # Compute the frequency bins
+    np.fft.fftfreq(nw, 1 / sample_rate)
+
+    def find_peak_frequency(fft_data, sample_rate):
+        """
+        Find the frequency of the peak in the magnitude spectrum.
+
+        Parameters:
+        - fft_data (array): The FFT results (complex numbers).
+        - sample_rate (int/float): The sample rate of the original signal.
+
+        Returns:
+        - float: The frequency of the peak in Hz.
+        """
+        # Calculate the magnitude spectrum
+        magnitude_spectrum = np.abs(fft_data)
+
+        # Number of samples is the length of the fft_data
+        n_samples = len(fft_data)
+
+        # Find the index of the maximum in the magnitude spectrum
+        peak_index = np.argmax(
+            magnitude_spectrum[: n_samples // 2]
+        )  # Only consider the positive frequencies
+
+        # Calculate the frequency bins
+        freqs = np.fft.fftfreq(n_samples, 1 / sample_rate)
+
+        # Map the peak index to the corresponding frequency
+        peak_frequency = freqs[peak_index]
+
+        return abs(
+            peak_frequency
+        )  # Return the absolute value to ensure positive frequency
+
+    def test_peak_frequency(fft_output, fft_ref):
+        # Find peak frequencies using a peak detection algorithm
+        peak_freq_output = find_peak_frequency(fft_output, 44100)
+        peak_freq_ref = find_peak_frequency(fft_ref, 44100)
+        print(peak_freq_output, peak_freq_ref)
+
+        # Assert that the peak frequencies are within a certain tolerance
+        np.allclose(peak_freq_output, peak_freq_ref)
+
+    def test_rmse(fft_output, fft_ref):
+        rmse = np.sqrt(np.mean((np.abs(fft_output) - np.abs(fft_ref)) ** 2))
+        threshold = 0.1
+        assert rmse < threshold
+
+    test_peak_frequency(fft_output, fft_ref)
+    test_rmse(fft_output, fft_ref)

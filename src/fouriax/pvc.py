@@ -231,7 +231,7 @@ def noscbank_cell(lvix, chans, nw, p_inc, i_inv, rg):
         def _loop(carry, _):
             addr, lastval = carry
             idx = addr
-            o_chan = lastval[0] * nw * jnp.cos(TWOPI * idx / 1.0)
+            o_chan = lastval[0] * nw * jnp.cos(TWOPI * idx)
             addr += lastval[1]
 
             lastval += jnp.array([ainc, finc])
