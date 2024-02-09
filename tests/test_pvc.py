@@ -184,15 +184,15 @@ def test_twiddle():
 
 def test_nosc():
     # Parameters
-    fft_len = 512
+    fft_bins = 512
     sample_rate = 44100
     nw = 1024
     hop_length = 147
 
     # Initialize C with alternating amplitude and frequency values
-    chans = np.zeros(2 * fft_len + 2)  # +2 to include both endpoints
+    chans = np.zeros(2 * fft_bins + 2)  # +2 to include both endpoints
     frequencies = np.linspace(
-        0, 22050, fft_len + 1
+        0, 22050, fft_bins + 1
     )  # Frequencies evenly spaced up to 22050 Hz
 
     # Find the index closest to 10 kHz frequency
@@ -200,7 +200,7 @@ def test_nosc():
     closest_idx = np.abs(frequencies - target_freq).argmin()
 
     # Set all amplitudes to 0 initially
-    amplitudes = np.zeros(fft_len + 1)
+    amplitudes = np.zeros(fft_bins + 1)
 
     # Set the amplitude at the closest index to 10 kHz to 0.1
     amplitudes[closest_idx] = 1e-5
@@ -212,8 +212,8 @@ def test_nosc():
     2 * np.pi
     p_inc = 1.0 / sample_rate
     i_inv = 1.0 / hop_length
-    lastval = np.zeros((fft_len + 1, 2))
-    index = np.zeros(fft_len + 1)
+    lastval = np.zeros((fft_bins + 1, 2))
+    index = np.zeros(fft_bins + 1)
 
     jnoscbank = jax.jit(noscbank)
     synth = jnoscbank(
