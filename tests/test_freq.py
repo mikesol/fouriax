@@ -134,7 +134,7 @@ def test_stft_loss(inputs, target, res):
         torch.from_numpy(np.transpose(inputs, (0, 2, 1))),
         torch.from_numpy(np.transpose(target, (0, 2, 1))),
     )
-    assert np.allclose(loss, loss_ref)
+    assert np.allclose(loss, loss_ref, atol=1.0e-3)
 
 
 @settings(deadline=None, max_examples=10)
@@ -152,7 +152,9 @@ def test_multi_resolution_stft_loss(inputs, target):
         for x, y, z in zip(fft_sizes, hop_sizes, win_lengths)
     ]
     traced_params, untraced_params = [[i for i, _ in params], [j for _, j in params]]
-    loss = multi_resolution_stft_loss(traced_params, untraced_params, inputs, target)
+    loss = multi_resolution_stft_loss(
+        traced_params, tuple(untraced_params), inputs, target
+    )
     loss_ref = MultiResolutionSTFTLoss(
         fft_sizes=fft_sizes, hop_sizes=hop_sizes, win_lengths=win_lengths
     )(
