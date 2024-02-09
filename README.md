@@ -104,6 +104,13 @@ Additionally, we include perceptual transforms.
 \* [Wang et al., 2019](https://arxiv.org/abs/1904.12088) also propose a multi-resolution spectral loss (that [Engel et al., 2020](https://arxiv.org/abs/2001.04643) follow),
 but they do not include both the log magnitude (L1 distance) and spectral convergence terms, introduced in [Arik et al., 2018](https://arxiv.org/abs/1808.0671), and then extended for the multi-resolution case in [Yamamoto et al., 2019](https://arxiv.org/abs/1910.11480).
 
+
+# PVC
+
+A partial port of core routines in Paul Koonce's [PVC](https://www.cs.princeton.edu/courses/archive/spr99/cs325/koonce.html) can be found in [`pvc.py`](./src/fouriax/pvc.py). This includes a novel FFT algorithm called `fkt` (Fast Koonce Transform) that, combined with `convert`, produces amplitude/frequency pairs for a given signal. This is often more attractive to use in loss functions than a garden-variety FFT because it provides better frequency information.
+
+There is also a `noscbank` method that allows for resynthesis. This can be used as a simple recurrent layer at the end of a network to do waveform synthesis.
+
 ## Development
 
 * Clone this repository
