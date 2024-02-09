@@ -130,10 +130,13 @@ def test_fkt():
         assert np.allclose(window, data["makewindows"])
         folded = fold_pvc_patches(patches, window, n_bins, hop_length, window_length)
         assert np.allclose(np.squeeze(folded)[:cap_at], data["fold"][:cap_at])
-        fktd = transform_array(
-            np.array(folded),
-            partial(rfkt, bitreverse_indices=bitreverse_indices, c=c, ws=ws),
-        )
+        fktd = jax.vmap(
+            jax.vmap(
+                partial(rfkt, bitreverse_indices=bitreverse_indices, c=c, ws=ws),
+                in_axes=0,
+            ),
+            in_axes=0,
+        )(folded)
         assert np.allclose(np.squeeze(fktd)[:cap_at], data["rfft"][:cap_at], atol=1e-5)
         fkt_batch = fktd.shape[0]
         fkt_seq = fktd.shape[1]
@@ -295,7 +298,6 @@ def test_nosc():
         # Find peak frequencies using a peak detection algorithm
         peak_freq_output = find_peak_frequency(fft_output, 44100)
         peak_freq_ref = find_peak_frequency(fft_ref, 44100)
-        print(peak_freq_output, peak_freq_ref)
 
         # Assert that the peak frequencies are within a certain tolerance
         np.allclose(peak_freq_output, peak_freq_ref)

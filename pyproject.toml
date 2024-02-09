@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fouriax"
-version = "0.0.1"
+version = "0.1.1"
 description = "A jax port of auraloss"
 authors = [
     "Mike Solomon <mike120982@gmail.com>",
@@ -30,7 +30,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, <4.0"
+python = ">=3.8, <4.0"
 jax = "*"
 jaxlib = "*"
 numpy = "*"
