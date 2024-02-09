@@ -1,4 +1,5 @@
 from enum import Enum
+from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -184,3 +185,70 @@ def convert_stft_to_amp_and_freq(real, imag, lastphase, d, r):
 
 def convert_stft_to_amp_and_freq_using_0_phase(real, imag, d, r):
     return convert_stft_to_amp_and_freq(real, imag, jnp.zeros_like(real[:, 0, :]), d, r)
+
+
+def noscbank_cell(lvix, chans, nw, p_inc, i_inv, rg):
+    """
+    Generates a bank of oscillators with varying amplitudes and frequencies over a specified range,
+    accumulating their outputs. This function is designed to process and synthesize audio signals
+    based on a set of input control parameters for amplitude and frequency modulation.
+
+    Parameters:
+    - lvix (tuple): A tuple containing two elements:
+        - lv (array): The last value of amplitude and frequency for each oscillator.
+        - ix (array): The current index or phase of each oscillator.
+    - C (array): A 2D array of control parameters where each row contains an amplitude and frequency
+      value for an oscillator. The array shape should be (-1, 2), where each row represents [amplitude, frequency].
+    - Nw (int): The number of samples in the window, used for scaling the oscillator outputs.
+    - Pinc (float): The phase increment per sample, derived from the sampling rate.
+    - Iinv (float): The inverse of the interpolation factor, used for controlling the rate of change in amplitude and frequency.
+    - rg (array): An array of indices used for generating the oscillator outputs over time.
+
+    Returns:
+    - A tuple containing:
+        - A tuple with the last values of amplitude and frequency for each oscillator, and the final index or phase.
+        - The accumulated output of all oscillators, summed over the second axis.
+
+    This function utilizes JAX for efficient numerical computations and parallel processing of oscillators.
+    The internal mechanism involves mapping a function over each oscillator's control parameters, followed
+    by a loop to generate the oscillator's output using cosine modulation based on the current phase and frequency.
+    The outputs are then summed to produce the final signal.
+
+    Example usage:
+    ```
+    # Assuming lvix, C, Nw, Pinc, Iinv, and rg are defined as per the function requirements.
+    last_values, index, output_signal = noscbank_cell(lvix, C, Nw, Pinc, Iinv, rg)
+    ```
+    """
+    lv, ix = lvix
+
+    def _vmap(c, lastval, index):
+
+        finc = (c[1] * p_inc - lastval[1]) * i_inv
+        ainc = (c[0] - lastval[0]) * i_inv
+        address = index
+
+        def _loop(carry, _):
+            addr, lastval = carry
+            idx = addr
+            o_chan = lastval[0] * nw * jnp.cos(TWOPI * idx / 1.0)
+            addr += lastval[1]
+
+            lastval += jnp.array([ainc, finc])
+            return (addr, lastval), o_chan
+
+        carry, o = jax.lax.scan(_loop, (address, lastval), rg)
+        address = carry[0]
+        lastval = jnp.array([c[0], c[1] * p_inc])
+        index = address
+        return o, lastval, index
+
+    chans = jnp.reshape(chans, (-1, 2))
+    o, lastval, index = jax.vmap(_vmap, in_axes=0, out_axes=0)(chans, lv, ix)
+    return (lastval, index), jnp.sum(o, axis=0)
+
+
+def noscbank(lvix, chans, nw, p_inc, i_inv, rg):
+    return jax.lax.scan(
+        partial(noscbank_cell, nw=nw, p_inc=p_inc, i_inv=i_inv, rg=rg), lvix, chans
+    )
