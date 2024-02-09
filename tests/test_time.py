@@ -12,6 +12,12 @@ from hypothesis.extra.numpy import arrays
 
 from fouriax.time import dc_loss, esr_loss, log_cosh_loss
 
+dc_loss, esr_loss, log_cosh_loss = (
+    jax.jit(dc_loss, static_argnums=(2,)),
+    jax.jit(esr_loss, static_argnums=(2,)),
+    jax.jit(log_cosh_loss, static_argnums=(2, 3)),
+)
+
 shared_shape = st.shared(
     st.tuples(
         st.integers(min_value=1, max_value=64),

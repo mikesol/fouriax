@@ -62,7 +62,8 @@ def stft_magnitude_loss(x_mag, y_mag, log=True, distance="L1", reduction="mean")
 
 
 def stft_loss(
-    params,
+    traced_params,
+    untraced_params,
     inputs,
     target,
     w_sc=1.0,
@@ -83,7 +84,7 @@ def stft_loss(
 
     # Compute STFT for inputs and target
     def _to_map(x):
-        o = stft.stft(params, x)
+        o = stft.stft(traced_params, untraced_params, x)
         return o
 
     to_map = jax.vmap(_to_map, in_axes=-1, out_axes=-1)
@@ -170,7 +171,8 @@ def stft_loss(
 
 
 def multi_resolution_stft_loss(
-    params,
+    traced_params,
+    untraced_params,
     inputs,
     target,
     w_sc=1.0,
@@ -202,18 +204,18 @@ def multi_resolution_stft_loss(
         mag_distance=mag_distance,
     )
 
-    for p in params:
+    for p, q in zip(traced_params, untraced_params):
         if output == "full":
-            tmp_loss = loss_fn(params=p)
+            tmp_loss = loss_fn(traced_params=p, untraced_params=q)
             mrstft_loss += tmp_loss[0]
             sc_mag_loss.append(tmp_loss[1])
             log_mag_loss.append(tmp_loss[2])
             lin_mag_loss.append(tmp_loss[3])
             phs_loss.append(tmp_loss[4])
         else:
-            mrstft_loss += loss_fn(params=p)
+            mrstft_loss += loss_fn(traced_params=p, untraced_params=q)
 
-    mrstft_loss /= len(params)
+    mrstft_loss /= len(traced_params)
 
     if output == "loss":
         return mrstft_loss

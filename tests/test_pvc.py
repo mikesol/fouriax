@@ -19,6 +19,24 @@ from fouriax.pvc import (
     rfkt,
 )
 
+(
+    convert_stft_to_amp_and_freq_using_0_phase,
+    fold_pvc_patches,
+    koonce_normalization,
+    koonce_sinc,
+    make_pvc_patches,
+    noscbank,
+    rfkt,
+) = (
+    jax.jit(convert_stft_to_amp_and_freq_using_0_phase),
+    jax.jit(fold_pvc_patches, static_argnums=(2, 3, 4)),
+    jax.jit(koonce_normalization),
+    jax.jit(koonce_sinc, static_argnums=(1, 2)),
+    jax.jit(make_pvc_patches, static_argnums=(1, 2, 3)),
+    jax.jit(noscbank),
+    jax.jit(rfkt),
+)
+
 
 def parse_log_file(path):
     tags = ["makewindows", "shiftin", "fold", "rfft", "convert"]
@@ -215,8 +233,7 @@ def test_nosc():
     lastval = np.zeros((fft_bins + 1, 2))
     index = np.zeros(fft_bins + 1)
 
-    jnoscbank = jax.jit(noscbank)
-    synth = jnoscbank(
+    synth = noscbank(
         (lastval, index),
         jnp.tile(chans[None, :], (2 << 8, 1)),
         nw,

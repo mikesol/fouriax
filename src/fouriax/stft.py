@@ -1,6 +1,21 @@
+import dataclasses
+from typing import Optional
+
 import jax.lax as lax
 import jax.numpy as jnp
 import librosa
+
+
+@dataclasses.dataclass(frozen=True)
+class DftParams:
+    n: int
+    norm: Optional[str]
+
+
+@dataclasses.dataclass(frozen=True)
+class StftParams:
+    hop_length: int
+    n_fft: int
 
 
 def init_dft_params(n, norm=None):
@@ -35,12 +50,10 @@ def init_dft_params(n, norm=None):
         "W_imag": jnp.imag(w),
         "inv_W_real": jnp.real(inv_w),
         "inv_W_imag": jnp.imag(inv_w),
-        "n": n,
-        "norm": norm,
-    }
+    }, DftParams(n, norm)
 
 
-def dft(params, x_real, x_imag):
+def dft(traced_params, untraced_params, x_real, x_imag):
     """
     Perform the Discrete Fourier Transform (DFT) using JAX.
 
@@ -52,17 +65,21 @@ def dft(params, x_real, x_imag):
     Returns:
     Tuple of arrays representing the real and imaginary parts of the DFT.
     """
-    z_real = jnp.dot(x_real, params["W_real"]) - jnp.dot(x_imag, params["W_imag"])
-    z_imag = jnp.dot(x_imag, params["W_real"]) + jnp.dot(x_real, params["W_imag"])
+    z_real = jnp.dot(x_real, traced_params["W_real"]) - jnp.dot(
+        x_imag, traced_params["W_imag"]
+    )
+    z_imag = jnp.dot(x_imag, traced_params["W_real"]) + jnp.dot(
+        x_real, traced_params["W_imag"]
+    )
 
-    if params["norm"] == "ortho":
-        z_real /= jnp.sqrt(params["n"])
-        z_imag /= jnp.sqrt(params["n"])
+    if untraced_params.norm == "ortho":
+        z_real /= jnp.sqrt(untraced_params.n)
+        z_imag /= jnp.sqrt(untraced_params.n)
 
     return z_real, z_imag
 
 
-def idft(params, x_real, x_imag):
+def idft(traced_params, untraced_params, x_real, x_imag):
     """
     Perform the Inverse Discrete Fourier Transform (IDFT) using JAX.
 
@@ -74,59 +91,59 @@ def idft(params, x_real, x_imag):
     Returns:
     Tuple of arrays representing the real and imaginary parts of the IDFT.
     """
-    z_real = jnp.dot(x_real, params["inv_W_real"]) - jnp.dot(
-        x_imag, params["inv_W_imag"]
+    z_real = jnp.dot(x_real, traced_params["inv_W_real"]) - jnp.dot(
+        x_imag, traced_params["inv_W_imag"]
     )
-    z_imag = jnp.dot(x_imag, params["inv_W_real"]) + jnp.dot(
-        x_real, params["inv_W_imag"]
+    z_imag = jnp.dot(x_imag, traced_params["inv_W_real"]) + jnp.dot(
+        x_real, traced_params["inv_W_imag"]
     )
 
-    if params["norm"] is None:
-        z_real /= params["n"]
-    elif params["norm"] == "ortho":
-        z_real /= jnp.sqrt(params["n"])
-        z_imag /= jnp.sqrt(params["n"])
+    if untraced_params.norm is None:
+        z_real /= untraced_params.n
+    elif untraced_params.norm == "ortho":
+        z_real /= jnp.sqrt(untraced_params.n)
+        z_imag /= jnp.sqrt(untraced_params.n)
 
     return z_real, z_imag
 
 
-def rdft(params, x_real):
+def rdft(traced_params, untraced_params, x_real):
     """
     Perform the Right-side Real Discrete Fourier Transform (RDFT) using JAX.
 
     Args:
-    params (dict): Parameters containing the DFT matrices.
+    traced_params (dict): Traced parameters containing the DFT matrices.
+    untraced_params (dict): Untraced static parameters.
     x_real (array): Real part of the signal.
 
     Returns:
     Tuple of arrays representing the real and imaginary parts of the RDFT.
     """
-    n_rfft = params["n"] // 2 + 1
-    z_real = jnp.dot(x_real, params["W_real"][..., :n_rfft])
-    z_imag = jnp.dot(x_real, params["W_imag"][..., :n_rfft])
+    n_rfft = untraced_params.n // 2 + 1
+    z_real = jnp.dot(x_real, traced_params["W_real"][..., :n_rfft])
+    z_imag = jnp.dot(x_real, traced_params["W_imag"][..., :n_rfft])
 
-    if params["norm"] is None:
-        pass
-    elif params["norm"] == "ortho":
-        z_real /= jnp.sqrt(params["n"])
-        z_imag /= jnp.sqrt(params["n"])
+    if untraced_params.norm == "ortho":
+        z_real /= jnp.sqrt(untraced_params.n)
+        z_imag /= jnp.sqrt(untraced_params.n)
 
     return z_real, z_imag
 
 
-def irdft(params, x_real, x_imag):
+def irdft(traced_params, untraced_params, x_real, x_imag):
     """
     Perform the Inverse Real Discrete Fourier Transform (IRDFT) using JAX.
 
     Args:
-    params (dict): Parameters containing the IDFT matrices.
+    traced_params (dict): Traced parameters containing the IDFT matrices.
+    untraced_params (dict): Untraced static parameters.
     x_real (array): Real part of the signal (n // 2 + 1,).
     x_imag (array): Imaginary part of the signal (n // 2 + 1,).
 
     Returns:
     An array representing the real part of the output signal.
     """
-    n_rfft = params["n"] // 2 + 1
+    n_rfft = untraced_params.n // 2 + 1
 
     # Flip and concatenate to reconstruct full signal
     flip_x_real = jnp.flip(x_real, axis=-1)
@@ -138,14 +155,12 @@ def irdft(params, x_real, x_imag):
     )
 
     # Calculate IRDFT
-    z_real = jnp.dot(x_real_full, params["inv_W_real"]) - jnp.dot(
-        x_imag_full, params["inv_W_imag"].shape
+    z_real = jnp.dot(x_real_full, traced_params["inv_W_real"]) - jnp.dot(
+        x_imag_full, traced_params["inv_W_imag"]
     )
 
-    if params["norm"] is None:
-        z_real /= params["n"]
-    elif params["norm"] == "ortho":
-        z_real /= jnp.sqrt(params["n"])
+    if untraced_params.norm == "ortho":
+        z_real /= jnp.sqrt(untraced_params.n)
 
     return z_real
 
@@ -191,19 +206,16 @@ def init_stft_params(n_fft, hop_length=None, win_length=None, window_type="hann"
     real_filter = jnp.real(w[:, : n_fft // 2 + 1] * fft_window[:, None]).T
     imag_filter = jnp.imag(w[:, : n_fft // 2 + 1] * fft_window[:, None]).T
 
-    params = {
+    return {
         "real_filter": real_filter[None, :],
         "imag_filter": imag_filter[None, :],
-        "hop_length": hop_length,
-        "n_fft": n_fft,
-    }
-    return params
+    }, StftParams(hop_length, n_fft)
 
 
-def stft(params, input_signal, center=True, pad_mode="reflect"):
+def stft(traced_params, untraced_params, input_signal, center=True, pad_mode="reflect"):
     batch_size = input_signal.shape[0]
-    n_fft = params["n_fft"]
-    hop_length = params["hop_length"]
+    n_fft = untraced_params.n_fft
+    hop_length = untraced_params.hop_length
 
     if center:
         input_signal = jnp.pad(
@@ -217,7 +229,7 @@ def stft(params, input_signal, center=True, pad_mode="reflect"):
 
     real = lax.conv_general_dilated(
         input_signal[:, None, :],
-        params["real_filter"],
+        traced_params["real_filter"],
         window_strides=stride,
         padding="VALID",
         lhs_dilation=None,
@@ -228,7 +240,7 @@ def stft(params, input_signal, center=True, pad_mode="reflect"):
 
     imag = lax.conv_general_dilated(
         input_signal[:, None, :],
-        params["imag_filter"],
+        traced_params["imag_filter"],
         window_strides=stride,
         padding="VALID",
         lhs_dilation=None,

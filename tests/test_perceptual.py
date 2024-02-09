@@ -1,3 +1,4 @@
+import jax
 import numpy as np
 import torch
 from auraloss.perceptual import FIRFilter
@@ -7,6 +8,7 @@ from hypothesis.extra.numpy import arrays
 
 from fouriax.perceptual import create_fir_filter, fir_filter
 
+fir_filter = jax.jit(fir_filter, static_argnums=(2,))
 audio_strategy = arrays(
     np.float32,
     st.tuples(

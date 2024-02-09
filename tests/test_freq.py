@@ -2,6 +2,7 @@
 
 """Tests for `fouriax` package."""
 
+import jax
 import numpy as np
 import torch
 from auraloss.freq import MultiResolutionSTFTLoss, STFTLoss
@@ -12,6 +13,38 @@ from scipy.signal import butter, filtfilt
 
 import fouriax.stft as stft
 from fouriax.freq import multi_resolution_stft_loss, stft_loss
+
+multi_resolution_stft_loss, stft_loss = jax.jit(
+    multi_resolution_stft_loss,
+    static_argnames=[
+        "untraced_params",
+        "w_sc",
+        "w_log_mag",
+        "w_lin_mag",
+        "w_phs",
+        "scale",
+        "perceptual_weighting",
+        "eps",
+        "output",
+        "reduction",
+        "mag_distance",
+    ],
+), jax.jit(
+    stft_loss,
+    static_argnames=[
+        "untraced_params",
+        "w_sc",
+        "w_log_mag",
+        "w_lin_mag",
+        "w_phs",
+        "scale",
+        "perceptual_weighting",
+        "eps",
+        "output",
+        "reduction",
+        "mag_distance",
+    ],
+)
 
 shared_shape = st.shared(
     st.tuples(
@@ -95,8 +128,8 @@ audio_strategy = arrays(
 )
 def test_stft_loss(inputs, target, res):
     """Sample pytest test function with the pytest fixture as an argument."""
-    params = stft.init_stft_params(res, res // 4, res // 2)
-    loss = stft_loss(params, inputs, target)
+    traced_params, untraced_params = stft.init_stft_params(res, res // 4, res // 2)
+    loss = stft_loss(traced_params, untraced_params, inputs, target)
     loss_ref = STFTLoss(res, res // 4, res // 2)(
         torch.from_numpy(np.transpose(inputs, (0, 2, 1))),
         torch.from_numpy(np.transpose(target, (0, 2, 1))),
@@ -118,7 +151,8 @@ def test_multi_resolution_stft_loss(inputs, target):
         stft.init_stft_params(x, y, z)
         for x, y, z in zip(fft_sizes, hop_sizes, win_lengths)
     ]
-    loss = multi_resolution_stft_loss(params, inputs, target)
+    traced_params, untraced_params = [[i for i, _ in params], [j for _, j in params]]
+    loss = multi_resolution_stft_loss(traced_params, untraced_params, inputs, target)
     loss_ref = MultiResolutionSTFTLoss(
         fft_sizes=fft_sizes, hop_sizes=hop_sizes, win_lengths=win_lengths
     )(
