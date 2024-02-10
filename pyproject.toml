@@ -35,7 +35,7 @@ jax = "*"
 jaxlib = "*"
 numpy = "*"
 scipy = "*"
-optax = "*"
+optax = "<0.1.8" # optax has typing issues in 0.1.8 that prevent python 3.8 from being used
 librosa = "*"
 
 [tool.poetry.dev-dependencies]
