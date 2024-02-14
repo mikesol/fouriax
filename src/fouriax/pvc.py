@@ -252,3 +252,71 @@ def noscbank(lvix, chans, nw, p_inc, i_inv, rg):
     return jax.lax.scan(
         partial(noscbank_cell, nw=nw, p_inc=p_inc, i_inv=i_inv, rg=rg), lvix, chans
     )
+
+
+# expect i to be a 1-d vector alternating amp, freq
+def _phaselock(freqs):
+    freqs = jnp.reshape(freqs, (1, 1, -1))
+    _tf = jax.lax.conv_general_dilated_patches(
+        freqs,
+        filter_shape=(3,),
+        window_strides=(1,),
+        padding=((1, 1),),
+    )
+    _tf = jnp.reshape(_tf, (3, -1))
+    print("tf shape", _tf.shape, _tf.dtype)
+    tf = jax.vmap(
+        lambda x: jnp.where((x[1] > x[0]) & (x[1] > x[2]), 1.0, -1.0),
+        in_axes=-1,
+        out_axes=-1,
+    )(_tf)
+    print("shaaape", tf.shape[-1], freqs.shape[-1])
+    assert tf.shape[-1] == freqs.shape[-1]
+
+    def select_y_element(x, y):
+        cond1 = (x[0] < 0.0) & (x[2] < 0.0)
+        cond2 = (x[0] > 0.0) & (x[2] <= 0.0)
+        cond3 = (x[2] > 0.0) & (x[0] <= 0.0)
+        cond4 = x[0] == 0
+        cond5 = x[2] == 0
+        cond6 = y[0] > y[2]
+
+        return jnp.where(
+            cond1,
+            y[1],
+            jnp.where(
+                cond2,
+                y[0],
+                jnp.where(
+                    cond3,
+                    y[2],
+                    jnp.where(
+                        cond4,
+                        y[1],
+                        jnp.where(cond5, y[1], jnp.where(cond6, y[0], y[2])),
+                    ),
+                ),
+            ),
+        )
+
+    tf = jnp.reshape(tf, (1, 1, -1))
+    tf = jax.lax.conv_general_dilated_patches(
+        tf,
+        filter_shape=(3,),
+        window_strides=(1,),
+        padding=((1, 1),),
+    )
+    tf = jnp.reshape(tf, (3, -1))
+    o = jax.vmap(
+        select_y_element,
+        in_axes=-1,
+        out_axes=-1,
+    )(tf, _tf)
+    assert o.shape[-1] == freqs.shape[-1]
+    return o
+
+
+def phaselock(i):
+    freqs = i[1::2]
+    o = _phaselock(freqs)
+    return jnp.ravel(jnp.column_stack((i[::2], o)))

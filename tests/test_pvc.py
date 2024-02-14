@@ -13,6 +13,7 @@ from fouriax.pvc import (
     koonce_sinc,
     make_pvc_patches,
     noscbank,
+    phaselock,
     precompute_bitreverse_indices,
     precompute_cfkt_constants,
     precompute_rfkt_constants,
@@ -27,6 +28,7 @@ from fouriax.pvc import (
     make_pvc_patches,
     noscbank,
     rfkt,
+    phaselock,
 ) = (
     jax.jit(convert_stft_to_amp_and_freq_using_0_phase),
     jax.jit(fold_pvc_patches, static_argnums=(2, 3, 4)),
@@ -35,6 +37,7 @@ from fouriax.pvc import (
     jax.jit(make_pvc_patches, static_argnums=(1, 2, 3)),
     jax.jit(noscbank),
     jax.jit(rfkt),
+    jax.jit(phaselock),
 )
 
 
@@ -309,3 +312,17 @@ def test_nosc():
 
     test_peak_frequency(fft_output, fft_ref)
     test_rmse(fft_output, fft_ref)
+
+
+def test_phaselock_1():
+    i = jnp.array([-1.0, 0.1, -1.0, 0.4, -1.0, 0.3, -1.0, 0.5, -1.0, 0.6, -1.0, 0.2])
+    t = jnp.array([-1.0, 0.4, -1.0, 0.4, -1.0, 0.4, -1.0, 0.6, -1.0, 0.6, -1.0, 0.6])
+    p = phaselock(i)
+    assert np.allclose(t, p)
+
+
+def test_phaselock_2():
+    i = jnp.array([-1.0, 0.6, -1.0, 0.6, -1.0, 0.6, -1.0, 0.5, -1.0, 0.4, -1.0, 0.3])
+    t = jnp.array([-1.0, 0.6, -1.0, 0.6, -1.0, 0.6, -1.0, 0.5, -1.0, 0.4, -1.0, 0.3])
+    p = phaselock(i)
+    assert np.allclose(t, p)

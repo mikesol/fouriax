@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fouriax"
-version = "0.1.1"
+version = "0.1.2"
 description = "A jax port of auraloss"
 authors = [
     "Mike Solomon <mike120982@gmail.com>",
